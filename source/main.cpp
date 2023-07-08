@@ -34,8 +34,13 @@
 #include "iconTitle.h"
 #include "nds_loader_arm9.h"
 
+#include "ROMList.h"
+#include "saveMap.h"
+
 
 using namespace std;
+
+#define GAMECODE_OFFSET 0x00C
 
 //---------------------------------------------------------------------------------
 void stop (void) {
@@ -77,20 +82,95 @@ int main(int argc, char **argv) {
 		string filename = browseForFile(extensionList);
 
 		// Construct a command line
-		vector<string> argarray;
+		vector<string> argarray; // Stores list of arguments using black magic
 		if (!argsFillArray(filename, argarray)) {
 			iprintf("Invalid NDS or arg file selected\n");
 		} else {
 			iprintf("Running %s with %d parameters\n", argarray[0].c_str(), argarray.size());
 
-			// Make a copy of argarray using C strings, for the sake of runNdsFile
-			vector<const char*> c_args;
-			for (const auto& arg: argarray) {
-				c_args.push_back(arg.c_str());
+			char cwd[PATH_MAX];
+			getcwd(cwd, PATH_MAX);
+
+			string sCWD(cwd);
+
+			// Check if saves folder exists
+			if (access((sCWD + "/saves/").c_str(), F_OK) != 0) {
+				mkdir((sCWD + "/saves").c_str(), 0777); // Create saves folder if not exist
 			}
 
-			// Try to run the NDS file with the given arguments
-			int err = runNdsFile(c_args[0], c_args.size(), &c_args[0]);
+			// Check if the save file exists or not
+			if (access((sCWD + "/saves/" + filename.substr(0, (filename.length() - 3)) + "sav").c_str(), F_OK) != 0) {
+				iprintf("No save file found!\nCreating save file...");
+				// Get the gamecode
+				FILE *romFile = fopen((sCWD + "/" + filename).c_str(), "rb");
+				u32 gameCode;
+				if (romFile) {
+					fseek(romFile, GAMECODE_OFFSET, SEEK_SET);
+					fread(&gameCode, 4, 1, romFile); // Read 1 4-byte element from the romFile (the gameCode)
+					fclose(romFile);
+
+					// Write the save file omg
+					FILE *saveFile = fopen((sCWD + "/saves/" + filename.substr(0, (filename.length() - 3)) + "sav").c_str(), "wb");
+
+					std::vector<u32>::iterator vecPointer = lower_bound(gameCodes.begin(), gameCodes.end(), gameCode);
+					ROMListEntry gameInfo = ROMList[vecPointer - gameCodes.begin()];
+					if (saveFile) {
+						for (int i=0; i < sramlen[gameInfo.SaveMemType]; i++) {
+							fputs("\x00", saveFile);
+						}
+
+						fclose(saveFile);
+					}
+				}
+			}
+
+			// Write the nds bootstrap config file
+			FILE *file = fopen("sd:/_nds/nds-bootstrap.ini", "w");
+			if (file)
+			{
+				fputs(
+					("[NDS-BOOTSTRAP]\n"
+					"DEBUG = 1\n"
+					"LOGGING = 1\n"
+					"B4DS_MODE = 0\n"
+					"ROMREAD_LED = 0\n"
+					"DMA_ROMREAD_LED = -1\n"
+					"PRECISE_VOLUME_CONTROL = 0\n"
+					"SDNAND = 0\n"
+					"MACRO_MODE = 0\n"
+					"SLEEP_MODE = 1\n"
+					"SOUND_FREQ = 0\n"
+					"CONSOLE_MODEL = 2\n"
+					"HOTKEY = 284\n"
+					"USE_ROM_REGION = 1\n"
+					"NDS_PATH = " + sCWD + "/" + filename + "\n" + 
+					"SAV_PATH = " + sCWD + "/saves/" + filename.substr(0, (filename.length() - 3)) + "sav\n" + // remove the nds part and replace with sav
+					"RAM_DRIVE_PATH = sd:/null.img\n"
+					"GUI_LANGUAGE = en\n"
+					"LANGUAGE = -1\n"
+					"REGION = -1\n"
+					"DSI_MODE = 1\n"
+					"BOOST_CPU = 0\n"
+					"BOOST_VRAM = 0\n"
+					"CARD_READ_DMA = 1\n"
+					"ASYNC_CARD_READ = 0\n"
+					"EXTENDED_MEMORY = 0\n"
+					"DONOR_SDK_VER = 0\n"
+					"PATCH_MPU_REGION = 0\n"
+					"PATCH_MPU_SIZE = 0\n"
+					"FORCE_SLEEP_PATCH = 0\n").c_str()
+				, file);
+				fclose(file);
+			}
+			else
+			{
+				iprintf("open failed!");
+			}
+
+			// Launch NDS Bootstrap
+			vector<const char*> c_args = {"sd:/_nds/nds-bootstrap-release.nds"};
+
+			int err = runNdsFile("/_nds/nds-bootstrap-release.nds", 1, &c_args[0]);
 			iprintf("Start failed. Error %i\n", err);
 		}
 

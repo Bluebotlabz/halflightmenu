@@ -27,7 +27,7 @@
 
 int main( int argc, char **argv) {
 	consoleDemoInit();
-	iprintf("hbmenu bootstrap ...\n");
+	iprintf("halflightmenu bootstrap ...\n");
 	if (fatInitDefault()) {
 		runNdsFile("/BOOT.NDS", 0, NULL);
 	} else {

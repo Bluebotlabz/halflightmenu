@@ -6,6 +6,7 @@
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
+export LIBSLIM  		:=	$(CURDIR)/libslim/libslim
 
 include $(DEVKITARM)/ds_rules
 
@@ -57,7 +58,7 @@ LIBS	:= 	-lfat -lnds9
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=	$(LIBNDS)
+LIBDIRS	:=	$(LIBSLIM) $(LIBNDS)
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -114,9 +115,9 @@ else
 	endif
 endif
 
-.PHONY: bootloader bootstub BootStrap exceptionstub $(BUILD) clean cia
+.PHONY: libslim bootloader bootstub BootStrap exceptionstub $(BUILD) clean cia
 
-all:	bootloader bootstub exceptionstub $(BUILD) BootStrap
+all:	libslim bootloader bootstub exceptionstub $(BUILD) BootStrap
 
 cia:
 	$(MAKE) -C BootStrap bootstrap.cia
@@ -142,12 +143,13 @@ $(BUILD):
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds $(TARGET).arm9 data
+	@$(MAKE) -C libslim clean
 	@$(MAKE) -C bootloader clean
 	@$(MAKE) -C bootstub clean
 	@$(MAKE) -C BootStrap clean
 	@$(MAKE) -C nds-exception-stub clean
 
-data:
+data: libslim
 	@mkdir -p data
 
 bootloader: data

@@ -4,6 +4,7 @@
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
+export LIBSLIM  		:=	$(CURDIR)/../../libslim/libslim
 
 include $(DEVKITARM)/ds_rules
 
@@ -46,7 +47,7 @@ LIBS	:=	-lfat -lnds9
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=	$(LIBNDS)
+LIBDIRS	:=	$(LIBSLIM) $(LIBNDS)
  
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -102,7 +103,6 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) *.elf *.nds* *.bin 
 
 ../../data:
 	@mkdir -p $@

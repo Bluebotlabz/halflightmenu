@@ -19,7 +19,7 @@
 ------------------------------------------------------------------*/
 
 #include <nds.h>
-#include <fat.h>
+#include <slim.h>
 
 #include <stdio.h>
 
@@ -27,8 +27,9 @@
 
 int main( int argc, char **argv) {
 	consoleDemoInit();
-	iprintf("halflightmenu bootstrap ...\n");
+	iprintf("halflightmenu bootstrap...\n");
 	if (fatInitDefault()) {
+		iprintf("Launching NDS\n");
 		runNdsFile("/BOOT.NDS", 0, NULL);
 	} else {
 		iprintf("FAT init failed!\n");

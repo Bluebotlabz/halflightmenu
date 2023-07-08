@@ -27,7 +27,7 @@
 
 int main( int argc, char **argv) {
 	consoleDemoInit();
-	iprintf("halflightmenu v0.1 bootstrap...\n");
+	iprintf("halflightmenu v0.2 bootstrap...\n");
 	if (fatInitDefault()) { // <<< gets stuck here omg
 		iprintf("Launching NDS\n");
 		runNdsFile("/BOOT.NDS", 0, NULL);

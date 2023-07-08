@@ -1,8 +1,6 @@
 [submodule "bootloader"]
 	path = bootloader
-	url = git@github.com:devkitPro/nds-bootloader.git
-	branch = master
+	url = https://github.com/devkitPro/nds-bootloader
 [submodule "nds-exception-stub"]
 	path = nds-exception-stub
-	url = git@github.com:devkitPro/nds-exception-stub.git
-	branch = master
+	url = https://github.com/devkitPro/nds-exception-stub

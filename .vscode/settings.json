@@ -10,6 +10,8 @@
         "string_view": "cpp",
         "initializer_list": "cpp",
         "dldi_patcher.h": "c",
-        "audio.h": "c"
+        "audio.h": "c",
+        "stdio.h": "c",
+        "nds_loader_arm9.h": "c"
     }
 }

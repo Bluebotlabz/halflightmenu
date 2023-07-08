@@ -41,6 +41,6 @@ License:
 bool FAT_InitFiles (bool initCard);
 u32 getBootFileCluster (const char* bootName);
 u32 fileRead (char* buffer, u32 cluster, u32 startOffset, u32 length);
-u32 FAT_ClustToSect (u32 cluster);
+u32 FAT_ClustToSect (u32 cluster); // unused elsewhere
 
 #endif // FAT_H

@@ -51,7 +51,7 @@ LDFLAGS	=	-specs=ds_arm9.specs -g -Wl,--gc-sections $(ARCH) -Wl,-Map,$(notdir $*
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
 #---------------------------------------------------------------------------------
-LIBS	:= 	-lfat -lnds9
+LIBS	:= -lslim -lnds9
 
 
 #---------------------------------------------------------------------------------
@@ -163,6 +163,12 @@ bootstub: data
 
 BootStrap:
 	@$(MAKE) -C BootStrap
+
+libslim: $(LIBSLIM)/lib/libslim.a
+
+$(LIBSLIM)/lib/libslim.a:
+	mkdir -p $(LIBSLIM)/lib
+	cd $(LIBSLIM) && $(MAKE)
 
 #---------------------------------------------------------------------------------
 else

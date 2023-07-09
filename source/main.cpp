@@ -125,13 +125,13 @@ int main(int argc, char **argv) {
 			}
 
 			// Write the nds bootstrap config file
-			FILE *file = fopen("sd:/_nds/nds-bootstrap.ini", "w");
+			/*FILE *file = fopen("sd:/_nds/nds-bootstrap.ini", "w");
 			if (file)
 			{
 				fputs(
 					("[NDS-BOOTSTRAP]\n"
-					"DEBUG = 1\n"
-					"LOGGING = 1\n"
+					"DEBUG = 0\n"
+					"LOGGING = 0\n"
 					"B4DS_MODE = 0\n"
 					"ROMREAD_LED = 0\n"
 					"DMA_ROMREAD_LED = -1\n"
@@ -165,12 +165,16 @@ int main(int argc, char **argv) {
 			else
 			{
 				iprintf("open failed!");
-			}
+			}*/
 
 			// Launch NDS Bootstrap
-			vector<const char*> c_args = {"sd:/_nds/nds-bootstrap-release.nds"};
+			vector<const char*> c_args = {
+				"sd:/_nds/nds-bootstrap-release.nds",
+				strdup((sCWD + "/" + filename).c_str()),
+				strdup((sCWD + "/saves/" + filename.substr(0, (filename.length() - 3)) + "sav").c_str())
+			};
 
-			int err = runNdsFile("/_nds/nds-bootstrap-release.nds", 1, &c_args[0]);
+			int err = runNdsFile(c_args[0], c_args.size(), &c_args[0]);
 			iprintf("Start failed. Error %i\n", err);
 		}
 

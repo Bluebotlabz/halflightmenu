@@ -37,10 +37,135 @@
 #include "ROMList.h"
 #include "saveMap.h"
 
+#include "fileCopy.h"
+#include "tonccpy.h"
 
 using namespace std;
 
 #define GAMECODE_OFFSET 0x00C
+#define CRC_OFFSET 0x15E
+
+
+
+/**
+ * Fix AP for some games.
+ */
+std::string setApFix(const char *filename, const char* gameTid, u16 headerCRC) {
+	bool ipsFound = false;
+	bool cheatVer = true;
+	char ipsPath[256];
+	char ipsPath2[256];
+
+	iprintf("Checking for bin APFix (1)");
+	if (!ipsFound) {
+		snprintf(ipsPath, sizeof(ipsPath), "sd:/_nds/TWiLightMenu/extras/apfix/cht/%s.bin", filename);
+		ipsFound = (access(ipsPath, F_OK) == 0);
+	}
+
+	iprintf("Checking for bin APFix (2)");
+	if (!ipsFound) {
+		snprintf(ipsPath, sizeof(ipsPath), "sd:/_nds/TWiLightMenu/extras/apfix/cht/%s-%X.bin", gameTid, headerCRC);
+		ipsFound = (access(ipsPath, F_OK) == 0);
+	}
+
+	iprintf("Checking for ips APFix (1)");
+	if (!ipsFound) {
+		snprintf(ipsPath, sizeof(ipsPath), "sd:/_nds/TWiLightMenu/extras/apfix/%s.ips", filename);
+		ipsFound = (access(ipsPath, F_OK) == 0);
+		if (ipsFound) {
+			cheatVer = false;
+		}
+	}
+
+	iprintf("Checking for ips APFix (2)");
+	if (!ipsFound) {
+		snprintf(ipsPath, sizeof(ipsPath), "sd:/_nds/TWiLightMenu/extras/apfix/%s-%X.ips", gameTid, headerCRC);
+		ipsFound = (access(ipsPath, F_OK) == 0);
+		if (ipsFound) {
+			cheatVer = false;
+		}
+	}
+
+	if (ipsFound) {
+		/*if (false && true) {
+			mkdir("fat:/_nds", 0777);
+			mkdir("fat:/_nds/nds-bootstrap", 0777);
+			fcopy(ipsPath, cheatVer ? "fat:/_nds/nds-bootstrap/apFixCheat.bin" : "fat:/_nds/nds-bootstrap/apFix.ips");
+			return cheatVer ? "fat:/_nds/nds-bootstrap/apFixCheat.bin" : "fat:/_nds/nds-bootstrap/apFix.ips";
+		}*/
+		return ipsPath;
+	} else {
+		iprintf("Checking for pck APFix");
+		FILE *file = fopen("sd:/_nds/TWiLightMenu/extras/apfix.pck", "rb");
+		if (file) {
+			char buf[5] = {0};
+			fread(buf, 1, 4, file);
+			if (strcmp(buf, ".PCK") != 0) // Invalid file
+				return "";
+
+			u32 fileCount;
+			fread(&fileCount, 1, sizeof(fileCount), file);
+
+			u32 offset = 0, size = 0;
+
+			// Try binary search for the game
+			int left = 0;
+			int right = fileCount;
+
+			while (left <= right) {
+				int mid = left + ((right - left) / 2);
+				fseek(file, 16 + mid * 16, SEEK_SET);
+				fread(buf, 1, 4, file);
+				int cmp = strcmp(buf, gameTid);
+				if (cmp == 0) { // TID matches, check CRC
+					u16 crc;
+					fread(&crc, 1, sizeof(crc), file);
+
+					if (crc == headerCRC) { // CRC matches
+						fread(&offset, 1, sizeof(offset), file);
+						fread(&size, 1, sizeof(size), file);
+						cheatVer = fgetc(file) & 1;
+						break;
+					} else if (crc < headerCRC) {
+						left = mid + 1;
+					} else {
+						right = mid - 1;
+					}
+				} else if (cmp < 0) {
+					left = mid + 1;
+				} else {
+					right = mid - 1;
+				}
+			}
+
+			if (offset > 0 && size > 0) {
+				fseek(file, offset, SEEK_SET);
+				u8 *buffer = new u8[size];
+				fread(buffer, 1, size, file);
+
+				snprintf(ipsPath, sizeof(ipsPath), "sd:/_nds/nds-bootstrap/apFix%s", cheatVer ? "Cheat.bin" : ".ips");
+				snprintf(ipsPath2, sizeof(ipsPath2), "sd:/_nds/nds-bootstrap/apFix%s", cheatVer ? ".ips" : "Cheat.bin");
+				if (access(ipsPath2, F_OK) == 0) {
+					remove(ipsPath2); // Delete leftover AP-fix file of opposite format
+				}
+				FILE *out = fopen(ipsPath, "wb");
+				if (out) {
+					fwrite(buffer, 1, size, out);
+					fclose(out);
+				}
+				delete[] buffer;
+				fclose(file);
+				return ipsPath;
+			}
+
+			fclose(file);
+		}
+	}
+
+	return "";
+}
+
+
 
 //---------------------------------------------------------------------------------
 void stop (void) {
@@ -115,10 +240,8 @@ int main(int argc, char **argv) {
 					std::vector<u32>::iterator vecPointer = lower_bound(gameCodes.begin(), gameCodes.end(), gameCode);
 					ROMListEntry gameInfo = ROMList[vecPointer - gameCodes.begin()];
 					if (saveFile) {
-						for (int i=0; i < sramlen[gameInfo.SaveMemType]; i++) {
-							fputs("\x00", saveFile);
-						}
-
+						fseek(saveFile, sramlen[gameInfo.SaveMemType] - 1, SEEK_SET);
+						fputc(0, saveFile);
 						fclose(saveFile);
 					}
 				}
@@ -167,15 +290,42 @@ int main(int argc, char **argv) {
 				iprintf("open failed!");
 			}*/
 
-			// Launch NDS Bootstrap
-			vector<const char*> c_args = {
-				"sd:/_nds/nds-bootstrap-release.nds",
-				strdup((sCWD + "/" + filename).c_str()),
-				strdup((sCWD + "/saves/" + filename.substr(0, (filename.length() - 3)) + "sav").c_str())
-			};
+			// Get the game AP patch //
 
-			int err = runNdsFile(c_args[0], c_args.size(), &c_args[0]);
-			iprintf("Start failed. Error %i\n", err);
+			// Get headerCRC + TID
+			FILE *romFile = fopen((sCWD + "/" + filename).c_str(), "rb");
+			u16 headerCRC;
+			char tid[5] = {0}; // 4-character long titleID
+
+			if (romFile) {
+				fseek(romFile, GAMECODE_OFFSET, SEEK_SET);
+				fread(&tid, 1, 4, romFile);
+
+				fseek(romFile, CRC_OFFSET, SEEK_SET);
+				fread(&headerCRC, 2, 1, romFile); // read the 16bit crc of the header
+
+				fclose(romFile);
+
+				iprintf("\nInfo:\n");
+				iprintf("TID: %s", tid);
+				iprintf("\n");
+				iprintf("CRC: %X", headerCRC);
+				iprintf("\n");
+
+				// Launch NDS Bootstrap
+				vector<const char*> c_args = {
+					"sd:/_nds/nds-bootstrap-release.nds",
+					strdup((sCWD + "/" + filename).c_str()),
+					strdup((sCWD + "/saves/" + filename.substr(0, (filename.length() - 3)) + "sav").c_str()),
+					"", "", "", "", "", "", "", "", "", "", "",
+					strdup(setApFix((sCWD + "/" + filename).c_str(), tid, headerCRC).c_str()) // argv[14] is AP_FIX_PATH
+				};
+
+				int err = runNdsFile(c_args[0], c_args.size(), &c_args[0]);
+				iprintf("Start failed. Error %i\n", err);
+			} else {
+				iprintf("Failed to get ROM data");
+			}
 		}
 
 		argarray.clear();

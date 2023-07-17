@@ -1,10 +1,19 @@
+/*
+
+TWL_UTIL.CPP
+
+Code from TWLMenu for patching, etc
+
+See the README.md or LICENSE files in this folder for more info
+
+*/
+
 #include <string>
 
 #include "fileCopy.h"
 #include "tonccpy.h"
 
 #include "twl_util.h"
-
 
 std::string setApFix(const char *filename, const char* gameTid, u16 headerCRC) {
 	bool ipsFound = false;

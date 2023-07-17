@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "tonccpy.h"
+#include "filecopy.h"
 
 extern bool showProgressBar;
 extern int progressBarLength;

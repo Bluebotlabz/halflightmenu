@@ -26,7 +26,7 @@ VERSION	:=	$(HBMENU_MAJOR).$(HBMENU_MINOR).$(HBMENU_PATCH)
 #---------------------------------------------------------------------------------
 TARGET		:=	hbmenu
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	source $(shell [[ -d source ]] && ls -d source/*/ | xargs)
 INCLUDES	:=	include
 DATA		:=	data
 GRAPHICS	:=  gfx
